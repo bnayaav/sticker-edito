@@ -103,7 +103,7 @@
   .text-input.secondary { font-size: 14px; font-weight: 500; margin-top: 8px; }
 
   /* ===== TOGGLES ===== */
-  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toggles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .toggle {
     background: var(--bg-2); border: 1px solid var(--line);
     border-radius: 12px; padding: 12px; cursor: pointer;
@@ -283,11 +283,15 @@
     <div class="section-label">אפשרויות</div>
     <div class="toggles">
       <div class="toggle" data-toggle="logo">
-        <span class="toggle-label">לוגו ComPhone</span>
+        <span class="toggle-label">לוגו</span>
         <div class="toggle-switch"></div>
       </div>
       <div class="toggle" data-toggle="border">
         <span class="toggle-label">מסגרת</span>
+        <div class="toggle-switch"></div>
+      </div>
+      <div class="toggle" data-toggle="rotate">
+        <span class="toggle-label">סובב 90°</span>
         <div class="toggle-switch"></div>
       </div>
     </div>
@@ -363,6 +367,7 @@ const state = {
   line2: '',
   showLogo: false,
   showBorder: false,
+  rotate: false,
   pin: '',
   workerUrl: '',
   customLogo: null,  // dataURL
@@ -439,7 +444,8 @@ function bindInputs() {
   });
 
   document.querySelectorAll('.toggle').forEach(t => {
-    const key = t.dataset.toggle === 'logo' ? 'showLogo' : 'showBorder';
+    const map = { logo: 'showLogo', border: 'showBorder', rotate: 'rotate' };
+    const key = map[t.dataset.toggle];
     if (state[key]) t.classList.add('active');
     t.addEventListener('click', () => {
       state[key] = !state[key];
@@ -456,6 +462,13 @@ function bindInputs() {
   document.getElementById('logoUpload').addEventListener('change', handleLogoUpload);
 }
 
+function fitFont(text, maxW, maxH, charRatio) {
+  if (!text) return 0;
+  const byW = maxW / Math.max(text.length * charRatio, 1);
+  const byH = maxH * 0.9;
+  return Math.min(byW, byH);
+}
+
 function updatePreview() {
   const w = state.width, h = state.height;
   // קנה מידה - 4 פיקסלים למ"מ ≈ הצגה נוחה
@@ -465,25 +478,34 @@ function updatePreview() {
   const label = document.getElementById('label');
   label.style.width = pxW + 'px';
   label.style.height = pxH + 'px';
-  label.style.padding = (Math.min(w, h) * 0.08 * scale) + 'px';
+  const padPx = Math.min(pxW, pxH) * 0.08;
+  label.style.padding = padPx + 'px';
   label.classList.toggle('has-border', state.showBorder);
 
-  // גודל פונט מתאים לגובה התווית
-  const hasL2 = state.line2.trim().length > 0;
+  const hasL1 = !!state.line1.trim();
+  const hasL2 = !!state.line2.trim();
   const hasLogo = state.showLogo;
-  // יחס פונט לגובה אזור הטקסט
-  let textArea = pxH;
-  if (hasLogo) textArea *= 0.55;
-  if (hasL2) textArea *= 0.65;
-  const fontSize = Math.max(8, textArea * 0.7);
+
+  const usableW = pxW - padPx * 2;
+  let availH = pxH - padPx * 2;
+  let logoH = 0;
+  if (hasLogo && (hasL1 || hasL2)) { logoH = availH * 0.35; availH -= logoH + padPx * 0.5; }
+  else if (hasLogo) { logoH = availH; availH = 0; }
+
+  let h1 = availH, h2Box = 0;
+  if (hasL1 && hasL2) { h1 = availH * 0.6; h2Box = availH * 0.4; }
+  else if (!hasL1) h1 = 0;
+
+  const f1 = Math.floor(fitFont(state.line1, usableW, h1, 0.6));
+  const f2 = Math.floor(fitFont(state.line2, usableW, h2Box, 0.55));
 
   const logoHtml = hasLogo
-    ? `<img class="label-logo${!state.line1.trim() && !hasL2 ? ' only' : ''}" src="${state.customLogo || DEFAULT_LOGO_DATAURL}" />`
+    ? `<img class="label-logo${!hasL1 && !hasL2 ? ' only' : ''}" src="${state.customLogo || DEFAULT_LOGO_DATAURL}" style="max-height: ${logoH}px" />`
     : '';
 
   label.innerHTML = `
-    ${state.line1.trim() ? `<div class="label-text" style="font-size:${fontSize}px">${escapeHtml(state.line1)}</div>` : ''}
-    ${hasL2 ? `<div class="label-text secondary" style="font-size:${fontSize}px">${escapeHtml(state.line2)}</div>` : ''}
+    ${hasL1 ? `<div class="label-text" style="font-size:${f1}px">${escapeHtml(state.line1)}</div>` : ''}
+    ${hasL2 ? `<div class="label-text secondary" style="font-size:${f2}px">${escapeHtml(state.line2)}</div>` : ''}
     ${logoHtml}
   `;
 
@@ -663,6 +685,7 @@ async function sendToPrint() {
       line2: state.line2.trim(),
       showLogo: state.showLogo,
       showBorder: state.showBorder,
+      rotate: state.rotate,
       logoDataUrl: state.showLogo ? (state.customLogo || DEFAULT_LOGO_DATAURL) : null,
     };
     const r = await fetch(`${state.workerUrl}/jobs`, {
