@@ -307,24 +307,8 @@ function fitFontMm(text, maxWmm, maxHmm, charRatio) {
 function printLabel(label) {
   return new Promise(resolve => {
     const w = label.width, h = label.height;
-    const offsetX = label.offsetX || 0;  // mm
-    const offsetY = label.offsetY || 0;  // mm
-
-    const styleId = 'print-page-style';
-    let oldStyle = document.getElementById(styleId);
-    if (oldStyle) oldStyle.remove();
-    const style = document.createElement('style');
-    style.id = styleId;
-    style.textContent = `
-      @page { size: ${w}mm ${h}mm; margin: 0; }
-      @media print {
-        html, body { width: ${w}mm; height: ${h}mm; margin: 0 !important; padding: 0 !important; }
-        #printArea { width: ${w}mm; height: ${h}mm; position: relative; overflow: hidden; }
-        .label-print { width: ${w}mm; height: ${h}mm; box-sizing: border-box; position: absolute;
-          left: ${offsetX}mm; top: ${offsetY}mm; }
-      }
-    `;
-    document.head.appendChild(style);
+    const offsetX = label.offsetX || 0;
+    const offsetY = label.offsetY || 0;
 
     const hasL1 = !!label.line1;
     const hasL2 = !!label.line2;
@@ -352,39 +336,84 @@ function printLabel(label) {
     const f1 = f1Base * ((label.line1Scale || 100) / 100);
     const f2 = f2Base * ((label.line2Scale || 100) / 100);
 
-    const area = document.getElementById('printArea');
-    area.innerHTML = `
-      <div class="label-print ${label.showBorder ? 'has-border' : ''}" style="padding: ${padding}mm;">
-        ${hasL1 ? `<div class="label-text-1" style="font-size: ${f1}mm; line-height: 1">${esc(label.line1)}</div>` : ''}
-        ${hasL2 ? `<div class="label-text-2" style="font-size: ${f2}mm; line-height: 1">${esc(label.line2)}</div>` : ''}
-        ${hasLogo ? `<img class="label-logo-img" src="${label.logoDataUrl}" style="max-height: ${logoH}mm" />` : ''}
-      </div>
-    `;
+    // יוצרים iframe נקי לכל הדפסה — בלי לסחוב הגדרות ישנות של ה-Chrome
+    const oldFrame = document.getElementById('print-frame');
+    if (oldFrame) oldFrame.remove();
+    const iframe = document.createElement('iframe');
+    iframe.id = 'print-frame';
+    iframe.style.cssText = 'position:fixed;width:0;height:0;border:0;left:-9999px;top:-9999px';
+    document.body.appendChild(iframe);
 
-    const img = area.querySelector('img');
-    const startPrint = () => {
-      const onAfter = () => {
-        window.removeEventListener('afterprint', onAfter);
-        setTimeout(resolve, 300);
+    const html = `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<style>
+@page { size: ${w}mm ${h}mm; margin: 0; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: ${w}mm; height: ${h}mm;
+  margin: 0; padding: 0;
+  font-family: 'Rubik', 'Assistant', Arial, sans-serif;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.label {
+  width: ${w}mm; height: ${h}mm;
+  padding: ${padding}mm;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  position: absolute;
+  top: ${offsetY}mm; left: ${offsetX}mm;
+  ${label.showBorder ? 'outline: 0.4mm solid black; outline-offset: -0.8mm;' : ''}
+}
+.l1 { font-weight: 900; font-size: ${f1}mm; line-height: 1; }
+.l2 { font-weight: 500; font-size: ${f2}mm; line-height: 1; opacity: 0.85; margin-top: 0.4em; }
+.logo { display: block; max-width: 80%; max-height: ${logoH}mm; margin-top: 0.4em; object-fit: contain; }
+</style>
+</head>
+<body>
+<div class="label">
+${hasL1 ? `<div class="l1">${esc(label.line1)}</div>` : ''}
+${hasL2 ? `<div class="l2">${esc(label.line2)}</div>` : ''}
+${hasLogo ? `<img class="logo" src="${label.logoDataUrl}">` : ''}
+</div>
+</body>
+</html>`;
+
+    iframe.onload = () => {
+      const ready = () => {
+        try {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        } catch (e) {
+          console.error('Print error:', e);
+        }
+        // נחכה אחרי שההדפסה מסתיימת
+        setTimeout(resolve, 1500);
       };
-      window.addEventListener('afterprint', onAfter);
-      setTimeout(() => window.print(), 200);
-      setTimeout(() => { window.removeEventListener('afterprint', onAfter); resolve(); }, 30000);
+      // המתנה לטעינת לוגו ופונטים
+      const doc = iframe.contentDocument;
+      const img = doc.querySelector('img');
+      if (img && !img.complete) {
+        img.onload = () => setTimeout(ready, 200);
+        img.onerror = () => setTimeout(ready, 200);
+      } else {
+        setTimeout(ready, 300);
+      }
     };
-    if (img && !img.complete) {
-      img.onload = startPrint;
-      img.onerror = startPrint;
-    } else {
-      startPrint();
-    }
+
+    iframe.srcdoc = html;
   });
 }
 
 function testPrint() {
   printLabel({
     width: 50, height: 25,
-    line1: 'בדיקה', line2: '50×25 מ"מ',
-    showLogo: false, showBorder: true, rotate: false,
+    line1: 'בדיקה', line2: '',
+    showLogo: false, showBorder: true,
+    line1Scale: 100, line2Scale: 100,
   });
 }
 
