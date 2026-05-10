@@ -374,7 +374,7 @@ const DEFAULT_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2
   <text x="100" y="50" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="500" font-size="12" fill="#1e3a8a">מחשבים וסלולר</text>
   <circle cx="32" cy="22" r="6" fill="#2dd4bf"/>
 </svg>`;
-const DEFAULT_LOGO_DATAURL = 'data:image/svg+xml;base64,' + btoa(DEFAULT_LOGO_SVG);
+const DEFAULT_LOGO_DATAURL = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(DEFAULT_LOGO_SVG);
 
 // ============ INIT ============
 function init() {
