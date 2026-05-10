@@ -6,4 +6,4 @@ compatibility_date = "2024-12-01"
 # wrangler kv:namespace create LABELS
 [[kv_namespaces]]
 binding = "LABELS"
-id = "REPLACE_WITH_YOUR_KV_ID"
+id = "6a3b3c777b554f86bdbec6c3ef9dfd76"
