@@ -392,6 +392,17 @@
     <input class="text-input" id="settingsPin" maxlength="6" inputmode="numeric" pattern="\d*" />
     <label>כתובת ה-Worker</label>
     <input class="text-input" id="settingsUrl" placeholder="https://sticker-print-queue.YOUR.workers.dev" />
+    <label>תיקון מיקום הדפסה (אם הטקסט יוצא בין מדבקות)</label>
+    <div style="display: flex; gap: 8px">
+      <div style="flex: 1">
+        <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 4px">אופקי (מ"מ)</div>
+        <input class="text-input" id="settingsOffsetX" type="number" step="0.5" />
+      </div>
+      <div style="flex: 1">
+        <div style="font-size: 11px; color: var(--text-dim); margin-bottom: 4px">אנכי (מ"מ)</div>
+        <input class="text-input" id="settingsOffsetY" type="number" step="0.5" />
+      </div>
+    </div>
     <label>לוגו מותאם אישית (אופציונלי, מחליף את ברירת המחדל)</label>
     <label class="upload-btn">
       <input type="file" id="logoUpload" accept="image/*">
@@ -421,10 +432,11 @@ const state = {
   line2Scale: 100,
   showLogo: false,
   showBorder: false,
-  rotate: false,
   pin: '',
   workerUrl: '',
-  customLogo: null,  // dataURL
+  customLogo: null,
+  offsetX: 0,  // mm — תיקון מיקום אופקי קבוע
+  offsetY: 0,  // mm — תיקון מיקום אנכי קבוע
 };
 
 // סימנים נפוצים — חצים, סטארים, סמלי מטבע, יחידות, מסחר
@@ -643,6 +655,8 @@ function toast(msg, type = '') {
 function openSettings() {
   document.getElementById('settingsPin').value = state.pin;
   document.getElementById('settingsUrl').value = state.workerUrl;
+  document.getElementById('settingsOffsetX').value = state.offsetX || 0;
+  document.getElementById('settingsOffsetY').value = state.offsetY || 0;
   if (state.customLogo) {
     const p = document.getElementById('logoPreview');
     p.src = state.customLogo;
@@ -659,6 +673,8 @@ function saveSettings() {
   if (!/^\d{4,6}$/.test(pin)) { toast('PIN חייב להיות 4-6 ספרות', 'error'); return; }
   state.pin = pin;
   state.workerUrl = url;
+  state.offsetX = +document.getElementById('settingsOffsetX').value || 0;
+  state.offsetY = +document.getElementById('settingsOffsetY').value || 0;
   saveToStorage();
   updatePinDisplay();
   closeSettings();
@@ -796,7 +812,8 @@ async function sendToPrint() {
       line2Scale: state.line2Scale,
       showLogo: state.showLogo,
       showBorder: state.showBorder,
-      rotate: state.rotate,
+      offsetX: state.offsetX || 0,
+      offsetY: state.offsetY || 0,
       logoDataUrl: state.showLogo ? (state.customLogo || DEFAULT_LOGO_DATAURL) : null,
     };
     const r = await fetch(`${state.workerUrl}/jobs`, {
