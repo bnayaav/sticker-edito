@@ -351,8 +351,10 @@ function printLabel(label) {
     if (hasL1 && hasL2) { h1 = availH * 0.6; h2Box = availH * 0.4; }
     else if (!hasL1) h1 = 0;
 
-    const f1 = fitFontMm(label.line1, usableW, h1, 0.6);
-    const f2 = fitFontMm(label.line2, usableW, h2Box, 0.55);
+    const f1Base = fitFontMm(label.line1, usableW, h1, 0.6);
+    const f2Base = fitFontMm(label.line2, usableW, h2Box, 0.55);
+    const f1 = f1Base * ((label.line1Scale || 100) / 100);
+    const f2 = f2Base * ((label.line2Scale || 100) / 100);
 
     const labelHtml = `
       <div class="label-print ${label.showBorder ? 'has-border' : ''}" style="
