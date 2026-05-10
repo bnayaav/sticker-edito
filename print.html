@@ -307,10 +307,14 @@ function fitFontMm(text, maxWmm, maxHmm, charRatio) {
 function printLabel(label) {
   return new Promise(resolve => {
     const w = label.width, h = label.height;
-    const rotate = !!label.rotate;
-    // אם מסובב — דף הנייר מוחלף מימדים, התוכן יסובב 90° במרכז
-    const pageW = rotate ? h : w;
-    const pageH = rotate ? w : h;
+    // מדפסות תרמיות (Xprinter) תמיד רוצות portrait — הצד הארוך = גובה.
+    // אם המדבקה לוגית רחבה (w > h), צריך לסובב את התוכן 90°.
+    // הטוגל "סובב 90°" הופך את ההתנהגות אם משהו לא יושב נכון.
+    const isLandscape = w > h;
+    const shouldRotate = label.rotate ? !isLandscape : isLandscape;
+    // הדף תמיד בפורטרייט: הצד הקצר = רוחב, הצד הארוך = גובה
+    const pageW = Math.min(w, h);
+    const pageH = Math.max(w, h);
 
     // הזרק stylesheet ל-@page בגודל המדויק
     const styleId = 'print-page-style';
@@ -362,8 +366,8 @@ function printLabel(label) {
     `;
 
     const area = document.getElementById('printArea');
-    if (rotate) {
-      // עוטף בקונטיינר בגודל הדף, ממקם את התווית במרכז ומסובב 90°
+    if (shouldRotate) {
+      // עוטף בקונטיינר בגודל הדף (portrait), ממקם את התווית במרכז ומסובב 90°
       area.innerHTML = `
         <div style="position: relative; width: ${pageW}mm; height: ${pageH}mm; overflow: hidden;">
           <div style="
