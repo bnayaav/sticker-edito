@@ -307,63 +307,59 @@ function fitFontMm(text, maxWmm, maxHmm, charRatio) {
 function printLabel(label) {
   return new Promise(resolve => {
     const w = label.width, h = label.height;
-    // לא נילחם בדרייבר. לא קובעים page size — הדרייבר מספק את הדף בגודל הנכון.
+    // הדרייבר מצפה לדף בגודל מדבקה אחת. בלי size הוא לוקח A4 ויחתוך לכמה מדבקות.
     const styleId = 'print-page-style';
     let oldStyle = document.getElementById(styleId);
     if (oldStyle) oldStyle.remove();
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = `
-      @page { margin: 0; }
+      @page { size: ${w}mm ${h}mm ${w > h ? 'landscape' : 'portrait'}; margin: 0; }
       @media print {
-        html, body { margin: 0 !important; padding: 0 !important; width: 100%; height: 100%; }
-        #printArea { width: 100%; height: 100%; position: relative; }
-        .label-print { width: 100%; height: 100%; box-sizing: border-box; }
+        html, body { width: ${w}mm; height: ${h}mm; margin: 0 !important; padding: 0 !important; }
+        #printArea { width: ${w}mm; height: ${h}mm; position: relative; }
+        .label-print { width: ${w}mm; height: ${h}mm; box-sizing: border-box; }
       }
     `;
     document.head.appendChild(style);
 
-    // הכל באחוזים מהדף שהדרייבר נתן — לא משנה מה הגודל הפיזי בפועל
     const hasL1 = !!label.line1;
     const hasL2 = !!label.line2;
     const hasLogo = label.showLogo && label.logoDataUrl;
-    // יחס המדבקה — בשביל פרופורציות נכונות של גודל הטקסט
-    const aspectRatio = w / h;  // 50/25 = 2 לדוגמה
-    // אזור גובה זמין באחוזים (מתוך 100%)
-    let availPct = 84; // 8% padding למעלה ולמטה
-    let logoPct = 0;
-    if (hasLogo && (hasL1 || hasL2)) { logoPct = availPct * 0.35; availPct -= logoPct + 4; }
-    else if (hasLogo) { logoPct = availPct; availPct = 0; }
 
-    let h1Pct = availPct, h2Pct = 0;
-    if (hasL1 && hasL2) { h1Pct = availPct * 0.62; h2Pct = availPct * 0.38; }
-    else if (!hasL1) h1Pct = 0;
+    // חישוב פריסה ב-mm
+    const padding = Math.min(w, h) * 0.08;
+    const usableW = w - padding * 2;
+    let availH = h - padding * 2;
 
-    // חישוב גודל פונט באחוזים מגובה הדף, מוגבל גם לפי רוחב כדי שלא יחתוך
-    function calcFontPct(text, hPct, charRatio) {
+    let logoH = 0;
+    if (hasLogo && (hasL1 || hasL2)) { logoH = availH * 0.35; availH -= logoH + padding * 0.5; }
+    else if (hasLogo) { logoH = availH; availH = 0; }
+
+    let h1 = availH, h2Box = 0;
+    if (hasL1 && hasL2) { h1 = availH * 0.62; h2Box = availH * 0.38; }
+    else if (!hasL1) h1 = 0;
+
+    // גודל פונט אגרסיבי יותר — ממלא את כל הרוחב הזמין
+    function fit(text, maxW, maxH, charRatio) {
       if (!text) return 0;
-      // נתוני יסוד: גודל לפי גובה
-      const byHeight = hPct * 0.85;
-      // לפי רוחב: רוחב מנוצל הוא 84% מהדף; charRatio אומר רוחב תו ביחס לגובה.
-      // רוחב פונט = (84% רוחב דף) / (length * charRatio)
-      // אבל באחוזים מגובה הדף, צריך להמיר: (84/aspectRatio) / (length*charRatio)
-      const byWidth = (84 / aspectRatio) / Math.max(text.length * charRatio, 1);
-      return Math.min(byHeight, byWidth);
+      const byW = maxW / Math.max(text.length * charRatio, 1);
+      const byH = maxH;
+      return Math.min(byW, byH);
     }
-
-    const f1Base = calcFontPct(label.line1, h1Pct, 0.6);
-    const f2Base = calcFontPct(label.line2, h2Pct, 0.55);
+    const f1Base = fit(label.line1, usableW, h1, 0.55);
+    const f2Base = fit(label.line2, usableW, h2Box, 0.5);
     const f1 = f1Base * ((label.line1Scale || 100) / 100);
     const f2 = f2Base * ((label.line2Scale || 100) / 100);
 
     const area = document.getElementById('printArea');
     area.innerHTML = `
       <div class="label-print ${label.showBorder ? 'has-border' : ''}" style="
-        padding: 6%;
+        padding: ${padding}mm;
       ">
-        ${hasL1 ? `<div class="label-text-1" style="font-size: ${f1}vh; line-height: 1">${esc(label.line1)}</div>` : ''}
-        ${hasL2 ? `<div class="label-text-2" style="font-size: ${f2}vh; line-height: 1">${esc(label.line2)}</div>` : ''}
-        ${hasLogo ? `<img class="label-logo-img" src="${label.logoDataUrl}" style="max-height: ${logoPct}%" />` : ''}
+        ${hasL1 ? `<div class="label-text-1" style="font-size: ${f1}mm; line-height: 1">${esc(label.line1)}</div>` : ''}
+        ${hasL2 ? `<div class="label-text-2" style="font-size: ${f2}mm; line-height: 1">${esc(label.line2)}</div>` : ''}
+        ${hasLogo ? `<img class="label-logo-img" src="${label.logoDataUrl}" style="max-height: ${logoH}mm" />` : ''}
       </div>
     `;
 
