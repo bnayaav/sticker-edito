@@ -307,41 +307,32 @@ function fitFontMm(text, maxWmm, maxHmm, charRatio) {
 function printLabel(label) {
   return new Promise(resolve => {
     const w = label.width, h = label.height;
-    // מדפסות תרמיות (Xprinter) תמיד רוצות portrait — הצד הארוך = גובה.
-    // אם המדבקה לוגית רחבה (w > h), צריך לסובב את התוכן 90°.
-    // הטוגל "סובב 90°" הופך את ההתנהגות אם משהו לא יושב נכון.
-    const isLandscape = w > h;
-    const shouldRotate = label.rotate ? !isLandscape : isLandscape;
-    // הדף תמיד בפורטרייט: הצד הקצר = רוחב, הצד הארוך = גובה
-    const pageW = Math.min(w, h);
-    const pageH = Math.max(w, h);
-
-    // הזרק stylesheet ל-@page בגודל המדויק
+    // לא נילחם בדרייבר. אנחנו לא קובעים page size — הדרייבר כבר מוגדר נכון.
+    // התווית פשוט תמלא 100% מהדף שהדרייבר מספק (50×25 במדפסת התרמית).
     const styleId = 'print-page-style';
     let oldStyle = document.getElementById(styleId);
     if (oldStyle) oldStyle.remove();
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = `
-      @page {
-        size: ${pageW}mm ${pageH}mm;
-        margin: 0;
-      }
+      @page { margin: 0; }
       @media print {
-        html, body { width: ${pageW}mm; height: ${pageH}mm; margin: 0 !important; padding: 0 !important; }
-        #printArea { width: ${pageW}mm; height: ${pageH}mm; }
+        html, body { margin: 0 !important; padding: 0 !important; }
+        #printArea { width: 100%; height: 100vh; }
+        .label-print { width: 100%; height: 100%; }
       }
     `;
     document.head.appendChild(style);
 
-    // חישוב פריסה (תמיד ביחס לתווית הלוגית W×H)
-    const padding = Math.min(w, h) * 0.08;
-    const usableW = w - padding * 2;
-    let availH = h - padding * 2;
-
+    // חישוב פריסה ביחידות יחסיות (אחוזים) — מסתמך על מימדי המדבקה הלוגיים
     const hasL1 = !!label.line1;
     const hasL2 = !!label.line2;
     const hasLogo = label.showLogo && label.logoDataUrl;
+
+    // משתמשים ביחידות mm לפי המידות שהמשתמש ציין; הדף הסופי צריך להתאים
+    const padding = Math.min(w, h) * 0.06;
+    const usableW = w - padding * 2;
+    let availH = h - padding * 2;
 
     let logoH = 0;
     if (hasLogo && (hasL1 || hasL2)) { logoH = availH * 0.35; availH -= logoH + padding * 0.5; }
@@ -351,14 +342,14 @@ function printLabel(label) {
     if (hasL1 && hasL2) { h1 = availH * 0.6; h2Box = availH * 0.4; }
     else if (!hasL1) h1 = 0;
 
-    const f1Base = fitFontMm(label.line1, usableW, h1, 0.6);
-    const f2Base = fitFontMm(label.line2, usableW, h2Box, 0.55);
+    const f1Base = fitFontMm(label.line1, usableW, h1, 0.55);
+    const f2Base = fitFontMm(label.line2, usableW, h2Box, 0.5);
     const f1 = f1Base * ((label.line1Scale || 100) / 100);
     const f2 = f2Base * ((label.line2Scale || 100) / 100);
 
-    const labelHtml = `
+    const area = document.getElementById('printArea');
+    area.innerHTML = `
       <div class="label-print ${label.showBorder ? 'has-border' : ''}" style="
-        width: ${w}mm; height: ${h}mm;
         padding: ${padding}mm;
       ">
         ${hasL1 ? `<div class="label-text-1" style="font-size: ${f1}mm">${esc(label.line1)}</div>` : ''}
@@ -366,24 +357,6 @@ function printLabel(label) {
         ${hasLogo ? `<img class="label-logo-img" src="${label.logoDataUrl}" style="max-height: ${logoH}mm" />` : ''}
       </div>
     `;
-
-    const area = document.getElementById('printArea');
-    if (shouldRotate) {
-      // עוטף בקונטיינר בגודל הדף (portrait), ממקם את התווית במרכז ומסובב 90°
-      area.innerHTML = `
-        <div style="position: relative; width: ${pageW}mm; height: ${pageH}mm; overflow: hidden;">
-          <div style="
-            position: absolute;
-            top: 50%; left: 50%;
-            width: ${w}mm; height: ${h}mm;
-            transform: translate(-50%, -50%) rotate(90deg);
-            transform-origin: center center;
-          ">${labelHtml}</div>
-        </div>
-      `;
-    } else {
-      area.innerHTML = labelHtml;
-    }
 
     // המתן לטעינת הלוגו אם יש
     const img = area.querySelector('img');
