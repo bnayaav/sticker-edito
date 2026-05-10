@@ -102,6 +102,46 @@
   .text-input::placeholder { color: var(--text-dim); font-weight: 400; }
   .text-input.secondary { font-size: 14px; font-weight: 500; margin-top: 8px; }
 
+  /* ===== SYMBOLS ===== */
+  .symbols {
+    display: flex; gap: 6px; overflow-x: auto;
+    padding: 8px 4px 4px; scrollbar-width: none;
+    margin-top: 8px;
+  }
+  .symbols::-webkit-scrollbar { display: none; }
+  .sym-btn {
+    flex-shrink: 0; min-width: 38px; height: 38px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 10px; color: var(--text);
+    font-size: 18px; font-family: 'Rubik', sans-serif;
+    cursor: pointer; padding: 0 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .sym-btn:active { background: var(--accent-soft); border-color: var(--accent); transform: scale(0.94); }
+
+  /* ===== SLIDER ===== */
+  .slider-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 14px;
+    margin-bottom: 8px;
+  }
+  .slider-label { font-size: 12px; color: var(--text-dim); min-width: 40px; font-weight: 600; }
+  .slider-value { font-family: 'Rubik', monospace; font-size: 12px; color: var(--accent); min-width: 40px; text-align: end; font-weight: 700; }
+  .slider-row input[type="range"] {
+    flex: 1; -webkit-appearance: none; appearance: none;
+    height: 4px; background: var(--bg-3); border-radius: 999px; outline: none;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; background: var(--accent);
+    border-radius: 50%; cursor: pointer; box-shadow: 0 2px 8px #0006;
+  }
+  .slider-row input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px; background: var(--accent);
+    border-radius: 50%; cursor: pointer; border: none;
+  }
+
   /* ===== TOGGLES ===== */
   .toggles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .toggle {
@@ -276,6 +316,22 @@
     <div class="section-label">תוכן</div>
     <input class="text-input" id="line1" placeholder="שורה ראשית" autocomplete="off" />
     <input class="text-input secondary" id="line2" placeholder="שורה משנית (אופציונלי)" autocomplete="off" />
+    <div class="symbols" id="symbols"></div>
+  </div>
+
+  <!-- גודל טקסט -->
+  <div class="section">
+    <div class="section-label">גודל טקסט</div>
+    <div class="slider-row">
+      <span class="slider-label">שורה 1</span>
+      <input type="range" min="50" max="250" value="100" id="line1Scale" />
+      <span class="slider-value" id="line1ScaleValue">100%</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">שורה 2</span>
+      <input type="range" min="50" max="250" value="100" id="line2Scale" />
+      <span class="slider-value" id="line2ScaleValue">100%</span>
+    </div>
   </div>
 
   <!-- אופציות -->
@@ -365,6 +421,8 @@ const state = {
   height: 25,
   line1: 'דורון דווידוב',
   line2: '',
+  line1Scale: 100,
+  line2Scale: 100,
   showLogo: false,
   showBorder: false,
   rotate: false,
@@ -372,6 +430,16 @@ const state = {
   workerUrl: '',
   customLogo: null,  // dataURL
 };
+
+// סימנים נפוצים — חצים, סטארים, סמלי מטבע, יחידות, מסחר
+const SYMBOLS = [
+  '★','✓','✗','✦','❤','⚡','❄','♻','✉','☎',
+  '→','←','↑','↓','«','»','•','◆','■','●',
+  '₪','$','€','£','¥','%','‰','°','№','#',
+  '™','®','©','½','¼','¾','×','÷','±','∞'
+];
+
+let lastFocusedInput = 'line1';
 
 // לוגו ברירת מחדל - SVG מינימליסטי בסגנון ComPhone
 const DEFAULT_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60">
@@ -424,11 +492,39 @@ function renderPresets() {
   });
 }
 
+function renderSymbols() {
+  const c = document.getElementById('symbols');
+  c.innerHTML = SYMBOLS.map(s => `<button class="sym-btn" data-sym="${s}">${s}</button>`).join('');
+  c.querySelectorAll('.sym-btn').forEach(btn => {
+    btn.addEventListener('mousedown', e => e.preventDefault()); // לא לאבד focus
+    btn.addEventListener('click', () => insertSymbol(btn.dataset.sym));
+  });
+}
+
+function insertSymbol(sym) {
+  const id = lastFocusedInput || 'line1';
+  const el = document.getElementById(id);
+  const start = el.selectionStart ?? el.value.length;
+  const end = el.selectionEnd ?? el.value.length;
+  const before = el.value.slice(0, start);
+  const after = el.value.slice(end);
+  el.value = before + sym + after;
+  state[id] = el.value;
+  el.focus();
+  const pos = start + sym.length;
+  el.setSelectionRange(pos, pos);
+  saveToStorage(); updatePreview();
+}
+
 function bindInputs() {
   document.getElementById('widthInput').value = state.width;
   document.getElementById('heightInput').value = state.height;
   document.getElementById('line1').value = state.line1;
   document.getElementById('line2').value = state.line2;
+  document.getElementById('line1Scale').value = state.line1Scale;
+  document.getElementById('line2Scale').value = state.line2Scale;
+  document.getElementById('line1ScaleValue').textContent = state.line1Scale + '%';
+  document.getElementById('line2ScaleValue').textContent = state.line2Scale + '%';
 
   document.getElementById('widthInput').addEventListener('input', e => {
     state.width = +e.target.value || 50; saveToStorage(); renderPresets(); updatePreview();
@@ -436,12 +532,29 @@ function bindInputs() {
   document.getElementById('heightInput').addEventListener('input', e => {
     state.height = +e.target.value || 30; saveToStorage(); renderPresets(); updatePreview();
   });
-  document.getElementById('line1').addEventListener('input', e => {
-    state.line1 = e.target.value; saveToStorage(); updatePreview();
+
+  // טקסט — שמירת focus כדי לדעת לאן להוסיף סימן
+  ['line1', 'line2'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', e => {
+      state[id] = e.target.value; saveToStorage(); updatePreview();
+    });
+    el.addEventListener('focus', () => { lastFocusedInput = id; });
   });
-  document.getElementById('line2').addEventListener('input', e => {
-    state.line2 = e.target.value; saveToStorage(); updatePreview();
+
+  // סליידרים
+  ['line1Scale', 'line2Scale'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', e => {
+      const v = +e.target.value;
+      state[id] = v;
+      document.getElementById(id + 'Value').textContent = v + '%';
+      saveToStorage(); updatePreview();
+    });
   });
+
+  // סימנים — מקלדת
+  renderSymbols();
 
   document.querySelectorAll('.toggle').forEach(t => {
     const map = { logo: 'showLogo', border: 'showBorder', rotate: 'rotate' };
@@ -496,8 +609,8 @@ function updatePreview() {
   if (hasL1 && hasL2) { h1 = availH * 0.6; h2Box = availH * 0.4; }
   else if (!hasL1) h1 = 0;
 
-  const f1 = Math.floor(fitFont(state.line1, usableW, h1, 0.6));
-  const f2 = Math.floor(fitFont(state.line2, usableW, h2Box, 0.55));
+  const f1 = Math.floor(fitFont(state.line1, usableW, h1, 0.6) * (state.line1Scale / 100));
+  const f2 = Math.floor(fitFont(state.line2, usableW, h2Box, 0.55) * (state.line2Scale / 100));
 
   const logoHtml = hasLogo
     ? `<img class="label-logo${!hasL1 && !hasL2 ? ' only' : ''}" src="${state.customLogo || DEFAULT_LOGO_DATAURL}" style="max-height: ${logoH}px" />`
@@ -683,6 +796,8 @@ async function sendToPrint() {
       height: state.height,
       line1: state.line1.trim(),
       line2: state.line2.trim(),
+      line1Scale: state.line1Scale,
+      line2Scale: state.line2Scale,
       showLogo: state.showLogo,
       showBorder: state.showBorder,
       rotate: state.rotate,
