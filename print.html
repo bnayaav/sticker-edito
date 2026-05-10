@@ -307,18 +307,21 @@ function fitFontMm(text, maxWmm, maxHmm, charRatio) {
 function printLabel(label) {
   return new Promise(resolve => {
     const w = label.width, h = label.height;
-    // הדרייבר מצפה לדף בגודל מדבקה אחת. בלי size הוא לוקח A4 ויחתוך לכמה מדבקות.
+    const offsetX = label.offsetX || 0;  // mm
+    const offsetY = label.offsetY || 0;  // mm
+
     const styleId = 'print-page-style';
     let oldStyle = document.getElementById(styleId);
     if (oldStyle) oldStyle.remove();
     const style = document.createElement('style');
     style.id = styleId;
     style.textContent = `
-      @page { size: ${w}mm ${h}mm ${w > h ? 'landscape' : 'portrait'}; margin: 0; }
+      @page { size: ${w}mm ${h}mm; margin: 0; }
       @media print {
         html, body { width: ${w}mm; height: ${h}mm; margin: 0 !important; padding: 0 !important; }
-        #printArea { width: ${w}mm; height: ${h}mm; position: relative; }
-        .label-print { width: ${w}mm; height: ${h}mm; box-sizing: border-box; }
+        #printArea { width: ${w}mm; height: ${h}mm; position: relative; overflow: hidden; }
+        .label-print { width: ${w}mm; height: ${h}mm; box-sizing: border-box; position: absolute;
+          left: ${offsetX}mm; top: ${offsetY}mm; }
       }
     `;
     document.head.appendChild(style);
@@ -327,7 +330,6 @@ function printLabel(label) {
     const hasL2 = !!label.line2;
     const hasLogo = label.showLogo && label.logoDataUrl;
 
-    // חישוב פריסה ב-mm
     const padding = Math.min(w, h) * 0.08;
     const usableW = w - padding * 2;
     let availH = h - padding * 2;
@@ -340,12 +342,10 @@ function printLabel(label) {
     if (hasL1 && hasL2) { h1 = availH * 0.62; h2Box = availH * 0.38; }
     else if (!hasL1) h1 = 0;
 
-    // גודל פונט אגרסיבי יותר — ממלא את כל הרוחב הזמין
     function fit(text, maxW, maxH, charRatio) {
       if (!text) return 0;
       const byW = maxW / Math.max(text.length * charRatio, 1);
-      const byH = maxH;
-      return Math.min(byW, byH);
+      return Math.min(byW, maxH);
     }
     const f1Base = fit(label.line1, usableW, h1, 0.55);
     const f2Base = fit(label.line2, usableW, h2Box, 0.5);
@@ -354,9 +354,7 @@ function printLabel(label) {
 
     const area = document.getElementById('printArea');
     area.innerHTML = `
-      <div class="label-print ${label.showBorder ? 'has-border' : ''}" style="
-        padding: ${padding}mm;
-      ">
+      <div class="label-print ${label.showBorder ? 'has-border' : ''}" style="padding: ${padding}mm;">
         ${hasL1 ? `<div class="label-text-1" style="font-size: ${f1}mm; line-height: 1">${esc(label.line1)}</div>` : ''}
         ${hasL2 ? `<div class="label-text-2" style="font-size: ${f2}mm; line-height: 1">${esc(label.line2)}</div>` : ''}
         ${hasLogo ? `<img class="label-logo-img" src="${label.logoDataUrl}" style="max-height: ${logoH}mm" />` : ''}
