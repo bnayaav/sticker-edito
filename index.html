@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1" />
+<meta name="theme-color" content="#0c1014" />
+<title>מדבקות ComPhone</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Rubik:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c1014;
+    --bg-2: #141a21;
+    --bg-3: #1d242d;
+    --line: #2a323d;
+    --text: #e8edf3;
+    --text-dim: #8a95a3;
+    --accent: #2dd4bf;       /* טורקיז חי */
+    --accent-soft: #2dd4bf22;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --radius: 14px;
+    --shadow: 0 10px 30px -12px #0009;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Assistant', system-ui, sans-serif; min-height: 100vh; overscroll-behavior: none; }
+  body { padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+
+  /* ===== HEADER ===== */
+  header {
+    position: sticky; top: 0; z-index: 50;
+    background: linear-gradient(180deg, #0c1014 80%, transparent);
+    padding: 14px 16px 10px;
+    display: flex; align-items: center; gap: 12px;
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    font-family: 'Rubik', sans-serif; font-weight: 900;
+    font-size: 18px; letter-spacing: -0.02em;
+    display: flex; align-items: baseline; gap: 6px;
+  }
+  .logo .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); display: inline-block; box-shadow: 0 0 12px var(--accent); }
+  .pin-chip {
+    margin-inline-start: auto;
+    background: var(--bg-3); border: 1px solid var(--line);
+    padding: 6px 12px; border-radius: 999px;
+    font-size: 12px; color: var(--text-dim);
+    display: flex; align-items: center; gap: 6px;
+    cursor: pointer;
+  }
+  .pin-chip b { color: var(--accent); font-family: 'Rubik', monospace; letter-spacing: 0.1em; font-size: 14px; }
+
+  /* ===== CONTENT ===== */
+  main { padding: 0 16px 120px; max-width: 600px; margin: 0 auto; }
+  .section { margin-top: 20px; }
+  .section-label {
+    font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    color: var(--text-dim); margin-bottom: 8px;
+    padding-inline-start: 4px;
+  }
+
+  /* ===== PRESETS ===== */
+  .presets { display: flex; gap: 8px; overflow-x: auto; padding: 4px 4px 8px; scrollbar-width: none; }
+  .presets::-webkit-scrollbar { display: none; }
+  .preset {
+    flex-shrink: 0;
+    background: var(--bg-2); border: 1px solid var(--line);
+    padding: 10px 14px; border-radius: 12px;
+    cursor: pointer; transition: all 0.15s;
+    text-align: center; min-width: 78px;
+  }
+  .preset.active {
+    background: var(--accent-soft); border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--accent);
+  }
+  .preset .size { font-family: 'Rubik', monospace; font-size: 13px; font-weight: 700; color: var(--text); }
+  .preset .name { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  .preset.active .name { color: var(--accent); }
+
+  /* ===== DIMENSIONS ===== */
+  .dims { display: flex; gap: 8px; margin-top: 8px; }
+  .dim-input {
+    flex: 1; background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px; color: var(--text);
+    font-size: 16px; font-family: 'Rubik', monospace;
+    text-align: center;
+  }
+  .dim-input:focus { outline: none; border-color: var(--accent); }
+  .dim-x { display: flex; align-items: center; color: var(--text-dim); font-weight: 700; }
+
+  /* ===== TEXT INPUTS ===== */
+  .text-input {
+    width: 100%; background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px; color: var(--text);
+    font-size: 16px; font-family: 'Rubik', sans-serif; font-weight: 700;
+    direction: rtl; text-align: right;
+  }
+  .text-input:focus { outline: none; border-color: var(--accent); }
+  .text-input::placeholder { color: var(--text-dim); font-weight: 400; }
+  .text-input.secondary { font-size: 14px; font-weight: 500; margin-top: 8px; }
+
+  /* ===== TOGGLES ===== */
+  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .toggle {
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 12px; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: all 0.15s;
+  }
+  .toggle.active { background: var(--accent-soft); border-color: var(--accent); }
+  .toggle-label { font-size: 13px; font-weight: 600; }
+  .toggle-switch {
+    width: 36px; height: 20px; background: var(--line);
+    border-radius: 999px; position: relative; transition: 0.2s;
+  }
+  .toggle-switch::after {
+    content: ''; position: absolute; top: 2px; right: 2px;
+    width: 16px; height: 16px; background: white; border-radius: 50%;
+    transition: 0.2s;
+  }
+  .toggle.active .toggle-switch { background: var(--accent); }
+  .toggle.active .toggle-switch::after { right: calc(100% - 18px); }
+
+  /* ===== PREVIEW ===== */
+  .preview-wrap {
+    background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 24px 16px;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+  }
+  .preview-meta {
+    font-family: 'Rubik', monospace; font-size: 11px; color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+  .preview-meta b { color: var(--accent); }
+  .preview-stage {
+    background: repeating-linear-gradient(45deg, #1a212a, #1a212a 8px, #1d2630 8px, #1d2630 16px);
+    border-radius: 8px; padding: 16px; width: 100%;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 180px;
+  }
+  /* התווית עצמה — מה שיודפס */
+  .label {
+    background: white; color: black;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: 'Rubik', sans-serif;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-align: center;
+    line-height: 1;
+    box-shadow: 0 4px 20px #0007;
+  }
+  .label.has-border { outline: 2px solid black; outline-offset: -4px; }
+  .label-text { font-weight: 900; line-height: 1.05; }
+  .label-text.secondary { font-weight: 500; opacity: 0.85; margin-top: 0.4em; font-size: 0.55em; }
+  .label-logo { display: block; margin-top: 0.4em; max-width: 80%; max-height: 30%; object-fit: contain; }
+  .label-logo.only { max-height: 60%; }
+
+  /* ===== TEMPLATES ===== */
+  .templates { display: flex; gap: 8px; overflow-x: auto; padding: 4px; scrollbar-width: none; }
+  .templates::-webkit-scrollbar { display: none; }
+  .tpl {
+    flex-shrink: 0; background: var(--bg-2); border: 1px solid var(--line);
+    border-radius: 12px; padding: 10px 12px; cursor: pointer;
+    min-width: 110px; position: relative;
+  }
+  .tpl:active { transform: scale(0.97); }
+  .tpl-text { font-weight: 700; font-size: 13px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tpl-size { font-family: 'Rubik', monospace; font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+  .tpl-del {
+    position: absolute; top: -6px; left: -6px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--danger); color: white; border: 2px solid var(--bg);
+    font-size: 12px; font-weight: 900; line-height: 1;
+    display: none; align-items: center; justify-content: center;
+  }
+  .tpl.editing .tpl-del { display: flex; }
+  .tpl-empty { color: var(--text-dim); font-size: 13px; padding: 12px; }
+
+  /* ===== ACTIONS ===== */
+  .actions {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(0deg, var(--bg) 70%, transparent);
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+    display: flex; gap: 8px; max-width: 600px; margin: 0 auto;
+    z-index: 40;
+  }
+  .btn {
+    flex: 1; padding: 16px; border-radius: 14px;
+    border: 1px solid var(--line); background: var(--bg-2);
+    color: var(--text); font-size: 15px; font-weight: 700;
+    font-family: inherit; cursor: pointer; transition: all 0.15s;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--accent); color: #061419; border-color: var(--accent);
+    flex: 2;
+  }
+  .btn-primary:disabled { background: var(--bg-3); color: var(--text-dim); border-color: var(--line); }
+
+  /* ===== TOAST ===== */
+  .toast {
+    position: fixed; top: 70px; left: 50%; transform: translateX(-50%) translateY(-100px);
+    background: var(--accent); color: #061419;
+    padding: 10px 18px; border-radius: 999px;
+    font-weight: 700; font-size: 14px;
+    transition: transform 0.3s ease;
+    z-index: 100; box-shadow: var(--shadow);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { background: var(--danger); color: white; }
+  .toast.warn { background: var(--warning); color: #2a1a00; }
+
+  /* ===== MODAL (settings) ===== */
+  .modal-bg {
+    position: fixed; inset: 0; background: #000a; z-index: 60;
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--bg-2); border-radius: 20px 20px 0 0;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
+    width: 100%; max-width: 600px;
+    border-top: 1px solid var(--line);
+    animation: slideUp 0.25s ease;
+  }
+  @keyframes slideUp { from { transform: translateY(100%); } }
+  .modal h3 { margin: 0 0 16px; font-weight: 800; }
+  .modal label { display: block; font-size: 12px; color: var(--text-dim); margin: 12px 0 4px; }
+  .modal input { width: 100%; }
+  .upload-btn {
+    display: block; width: 100%; padding: 14px;
+    background: var(--bg-3); border: 1px dashed var(--line);
+    border-radius: 12px; color: var(--text); text-align: center;
+    cursor: pointer; font-weight: 600;
+  }
+  .upload-btn input { display: none; }
+  .logo-preview {
+    width: 100%; max-height: 80px; object-fit: contain;
+    background: white; border-radius: 8px; margin-top: 8px;
+    padding: 8px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="dot"></span>
+    <span>מדבקות</span>
+    <span style="color: var(--text-dim); font-weight: 700">ComPhone</span>
+  </div>
+  <div class="pin-chip" id="pinChip" title="לחץ להגדרות">
+    PIN: <b id="pinDisplay">----</b>
+  </div>
+</header>
+
+<main>
+
+  <!-- גודל -->
+  <div class="section">
+    <div class="section-label">גודל מדבקה</div>
+    <div class="presets" id="presets"></div>
+    <div class="dims">
+      <input class="dim-input" id="widthInput" type="number" min="10" max="200" inputmode="numeric" />
+      <div class="dim-x">×</div>
+      <input class="dim-input" id="heightInput" type="number" min="10" max="200" inputmode="numeric" />
+      <div class="dim-x" style="font-size: 12px; padding: 0 8px">מ"מ</div>
+    </div>
+  </div>
+
+  <!-- טקסט -->
+  <div class="section">
+    <div class="section-label">תוכן</div>
+    <input class="text-input" id="line1" placeholder="שורה ראשית" autocomplete="off" />
+    <input class="text-input secondary" id="line2" placeholder="שורה משנית (אופציונלי)" autocomplete="off" />
+  </div>
+
+  <!-- אופציות -->
+  <div class="section">
+    <div class="section-label">אפשרויות</div>
+    <div class="toggles">
+      <div class="toggle" data-toggle="logo">
+        <span class="toggle-label">לוגו ComPhone</span>
+        <div class="toggle-switch"></div>
+      </div>
+      <div class="toggle" data-toggle="border">
+        <span class="toggle-label">מסגרת</span>
+        <div class="toggle-switch"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- תצוגה מקדימה -->
+  <div class="section">
+    <div class="section-label">תצוגה מקדימה</div>
+    <div class="preview-wrap">
+      <div class="preview-stage">
+        <div class="label" id="label">
+          <div class="label-text" id="labelText">דורון דווידוב</div>
+        </div>
+      </div>
+      <div class="preview-meta">
+        גודל פיזי: <b id="metaSize">50×30 מ"מ</b>
+      </div>
+    </div>
+  </div>
+
+  <!-- טמפלייטים -->
+  <div class="section">
+    <div class="section-label" style="display:flex; justify-content:space-between; align-items:center">
+      <span>שמורים</span>
+      <span id="tplEditBtn" style="font-size:11px; color: var(--accent); cursor: pointer">עריכה</span>
+    </div>
+    <div class="templates" id="templates">
+      <div class="tpl-empty">אין מדבקות שמורות. לחץ "שמור" כדי להוסיף.</div>
+    </div>
+  </div>
+
+</main>
+
+<div class="actions">
+  <button class="btn" id="saveBtn">💾 שמור</button>
+  <button class="btn btn-primary" id="sendBtn">🖨️ שלח להדפסה</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- מודל הגדרות -->
+<div class="modal-bg" id="settingsModal">
+  <div class="modal">
+    <h3>הגדרות</h3>
+    <label>קוד צימוד (PIN) — הזן אותו במחשב</label>
+    <input class="text-input" id="settingsPin" maxlength="6" inputmode="numeric" pattern="\d*" />
+    <label>כתובת ה-Worker</label>
+    <input class="text-input" id="settingsUrl" placeholder="https://sticker-print-queue.YOUR.workers.dev" />
+    <label>לוגו מותאם אישית (אופציונלי, מחליף את ברירת המחדל)</label>
+    <label class="upload-btn">
+      <input type="file" id="logoUpload" accept="image/*">
+      📁 בחר קובץ לוגו
+    </label>
+    <img class="logo-preview" id="logoPreview" style="display:none" />
+    <div style="display: flex; gap: 8px; margin-top: 16px">
+      <button class="btn" onclick="closeSettings()">סגור</button>
+      <button class="btn btn-primary" onclick="saveSettings()">שמור</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ STATE ============
+const PRESETS = [
+  { w: 50, h: 30, name: 'תווית לקוח' },
+  { w: 40, h: 20, name: 'מלאי' },
+  { w: 60, h: 40, name: 'מוצר' },
+  { w: 80, h: 40, name: 'גדול' },
+  { w: 100, h: 50, name: 'שלט' },
+  { w: 30, h: 15, name: 'קטן' },
+];
+
+const state = {
+  width: 50,
+  height: 30,
+  line1: 'דורון דווידוב',
+  line2: '',
+  showLogo: false,
+  showBorder: false,
+  pin: '',
+  workerUrl: '',
+  customLogo: null,  // dataURL
+};
+
+// לוגו ברירת מחדל - SVG מינימליסטי בסגנון ComPhone
+const DEFAULT_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60">
+  <text x="100" y="32" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="900" font-size="28" fill="#1e3a8a">ComPhone</text>
+  <text x="100" y="50" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="500" font-size="12" fill="#1e3a8a">מחשבים וסלולר</text>
+  <circle cx="32" cy="22" r="6" fill="#2dd4bf"/>
+</svg>`;
+const DEFAULT_LOGO_DATAURL = 'data:image/svg+xml;base64,' + btoa(DEFAULT_LOGO_SVG);
+
+// ============ INIT ============
+function init() {
+  loadFromStorage();
+  if (!state.pin) state.pin = String(Math.floor(1000 + Math.random() * 9000));
+  saveToStorage();
+  renderPresets();
+  bindInputs();
+  loadTemplatesFromCloud();
+  updatePreview();
+  updatePinDisplay();
+  registerSW();
+}
+
+function loadFromStorage() {
+  try {
+    const s = JSON.parse(localStorage.getItem('sticker-state') || '{}');
+    Object.assign(state, s);
+  } catch {}
+}
+function saveToStorage() {
+  localStorage.setItem('sticker-state', JSON.stringify(state));
+}
+
+// ============ UI ============
+function renderPresets() {
+  const c = document.getElementById('presets');
+  c.innerHTML = PRESETS.map((p, i) => `
+    <div class="preset ${state.width === p.w && state.height === p.h ? 'active' : ''}" data-i="${i}">
+      <div class="size">${p.w}×${p.h}</div>
+      <div class="name">${p.name}</div>
+    </div>
+  `).join('');
+  c.querySelectorAll('.preset').forEach(el => {
+    el.addEventListener('click', () => {
+      const p = PRESETS[+el.dataset.i];
+      state.width = p.w; state.height = p.h;
+      document.getElementById('widthInput').value = p.w;
+      document.getElementById('heightInput').value = p.h;
+      saveToStorage(); renderPresets(); updatePreview();
+    });
+  });
+}
+
+function bindInputs() {
+  document.getElementById('widthInput').value = state.width;
+  document.getElementById('heightInput').value = state.height;
+  document.getElementById('line1').value = state.line1;
+  document.getElementById('line2').value = state.line2;
+
+  document.getElementById('widthInput').addEventListener('input', e => {
+    state.width = +e.target.value || 50; saveToStorage(); renderPresets(); updatePreview();
+  });
+  document.getElementById('heightInput').addEventListener('input', e => {
+    state.height = +e.target.value || 30; saveToStorage(); renderPresets(); updatePreview();
+  });
+  document.getElementById('line1').addEventListener('input', e => {
+    state.line1 = e.target.value; saveToStorage(); updatePreview();
+  });
+  document.getElementById('line2').addEventListener('input', e => {
+    state.line2 = e.target.value; saveToStorage(); updatePreview();
+  });
+
+  document.querySelectorAll('.toggle').forEach(t => {
+    const key = t.dataset.toggle === 'logo' ? 'showLogo' : 'showBorder';
+    if (state[key]) t.classList.add('active');
+    t.addEventListener('click', () => {
+      state[key] = !state[key];
+      t.classList.toggle('active', state[key]);
+      saveToStorage(); updatePreview();
+    });
+  });
+
+  document.getElementById('pinChip').addEventListener('click', openSettings);
+  document.getElementById('saveBtn').addEventListener('click', saveTemplate);
+  document.getElementById('sendBtn').addEventListener('click', sendToPrint);
+  document.getElementById('tplEditBtn').addEventListener('click', toggleTemplateEdit);
+
+  document.getElementById('logoUpload').addEventListener('change', handleLogoUpload);
+}
+
+function updatePreview() {
+  const w = state.width, h = state.height;
+  // קנה מידה - 4 פיקסלים למ"מ ≈ הצגה נוחה
+  const scale = Math.min(4, 320 / w, 200 / h);
+  const pxW = w * scale, pxH = h * scale;
+
+  const label = document.getElementById('label');
+  label.style.width = pxW + 'px';
+  label.style.height = pxH + 'px';
+  label.style.padding = (Math.min(w, h) * 0.08 * scale) + 'px';
+  label.classList.toggle('has-border', state.showBorder);
+
+  // גודל פונט מתאים לגובה התווית
+  const hasL2 = state.line2.trim().length > 0;
+  const hasLogo = state.showLogo;
+  // יחס פונט לגובה אזור הטקסט
+  let textArea = pxH;
+  if (hasLogo) textArea *= 0.55;
+  if (hasL2) textArea *= 0.65;
+  const fontSize = Math.max(8, textArea * 0.7);
+
+  const logoHtml = hasLogo
+    ? `<img class="label-logo${!state.line1.trim() && !hasL2 ? ' only' : ''}" src="${state.customLogo || DEFAULT_LOGO_DATAURL}" />`
+    : '';
+
+  label.innerHTML = `
+    ${state.line1.trim() ? `<div class="label-text" style="font-size:${fontSize}px">${escapeHtml(state.line1)}</div>` : ''}
+    ${hasL2 ? `<div class="label-text secondary" style="font-size:${fontSize}px">${escapeHtml(state.line2)}</div>` : ''}
+    ${logoHtml}
+  `;
+
+  document.getElementById('metaSize').textContent = `${w}×${h} מ"מ`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[<>&"']/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function updatePinDisplay() {
+  document.getElementById('pinDisplay').textContent = state.pin || '----';
+}
+
+// ============ TOAST ============
+let toastTimer;
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.className = 'toast ' + type, 2400);
+}
+
+// ============ SETTINGS MODAL ============
+function openSettings() {
+  document.getElementById('settingsPin').value = state.pin;
+  document.getElementById('settingsUrl').value = state.workerUrl;
+  if (state.customLogo) {
+    const p = document.getElementById('logoPreview');
+    p.src = state.customLogo;
+    p.style.display = 'block';
+  }
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+function saveSettings() {
+  const pin = document.getElementById('settingsPin').value.trim();
+  const url = document.getElementById('settingsUrl').value.trim().replace(/\/$/, '');
+  if (!/^\d{4,6}$/.test(pin)) { toast('PIN חייב להיות 4-6 ספרות', 'error'); return; }
+  state.pin = pin;
+  state.workerUrl = url;
+  saveToStorage();
+  updatePinDisplay();
+  closeSettings();
+  toast('הגדרות נשמרו');
+  loadTemplatesFromCloud();
+}
+
+function handleLogoUpload(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (f.size > 200_000) { toast('הלוגו גדול מדי (עד 200KB)', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    state.customLogo = ev.target.result;
+    saveToStorage();
+    const p = document.getElementById('logoPreview');
+    p.src = state.customLogo; p.style.display = 'block';
+    updatePreview();
+    toast('לוגו נטען');
+  };
+  reader.readAsDataURL(f);
+}
+
+// ============ TEMPLATES ============
+let templates = [];
+let editingTemplates = false;
+
+async function loadTemplatesFromCloud() {
+  // קודם מטעין מהמקומי
+  try { templates = JSON.parse(localStorage.getItem('sticker-templates') || '[]'); } catch { templates = []; }
+  renderTemplates();
+  // אם יש PIN ו-URL — נסנכרן עם הענן
+  if (!state.pin || !state.workerUrl) return;
+  try {
+    const r = await fetch(`${state.workerUrl}/templates?pin=${state.pin}`);
+    if (!r.ok) return;
+    const data = await r.json();
+    if (Array.isArray(data.templates) && data.templates.length) {
+      templates = data.templates;
+      localStorage.setItem('sticker-templates', JSON.stringify(templates));
+      renderTemplates();
+    }
+  } catch {}
+}
+
+async function saveTemplatesToCloud() {
+  localStorage.setItem('sticker-templates', JSON.stringify(templates));
+  if (!state.pin || !state.workerUrl) return;
+  try {
+    await fetch(`${state.workerUrl}/templates`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: state.pin, templates })
+    });
+  } catch {}
+}
+
+function saveTemplate() {
+  if (!state.line1.trim() && !state.showLogo) {
+    toast('אין מה לשמור — הוסף טקסט או לוגו', 'warn'); return;
+  }
+  const tpl = {
+    id: Date.now() + '',
+    width: state.width, height: state.height,
+    line1: state.line1, line2: state.line2,
+    showLogo: state.showLogo, showBorder: state.showBorder,
+  };
+  templates.unshift(tpl);
+  if (templates.length > 50) templates = templates.slice(0, 50);
+  saveTemplatesToCloud();
+  renderTemplates();
+  toast('נשמר');
+}
+
+function renderTemplates() {
+  const c = document.getElementById('templates');
+  if (!templates.length) {
+    c.innerHTML = '<div class="tpl-empty">אין מדבקות שמורות. לחץ "שמור" כדי להוסיף.</div>';
+    return;
+  }
+  c.innerHTML = templates.map(t => `
+    <div class="tpl ${editingTemplates ? 'editing' : ''}" data-id="${t.id}">
+      <div class="tpl-text">${escapeHtml(t.line1 || '(לוגו בלבד)')}</div>
+      <div class="tpl-size">${t.width}×${t.height} מ"מ</div>
+      <div class="tpl-del" data-del="${t.id}">×</div>
+    </div>
+  `).join('');
+  c.querySelectorAll('.tpl').forEach(el => {
+    el.addEventListener('click', e => {
+      if (e.target.dataset.del) return;
+      const t = templates.find(x => x.id === el.dataset.id);
+      if (!t) return;
+      Object.assign(state, t);
+      delete state.id;
+      saveToStorage();
+      bindInputs();
+      renderPresets();
+      updatePreview();
+      toast('נטען');
+    });
+  });
+  c.querySelectorAll('[data-del]').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      templates = templates.filter(t => t.id !== el.dataset.del);
+      saveTemplatesToCloud();
+      renderTemplates();
+    });
+  });
+}
+
+function toggleTemplateEdit() {
+  editingTemplates = !editingTemplates;
+  document.getElementById('tplEditBtn').textContent = editingTemplates ? 'סיום' : 'עריכה';
+  renderTemplates();
+}
+
+// ============ SEND TO PRINT ============
+async function sendToPrint() {
+  if (!state.workerUrl) {
+    toast('הגדר כתובת Worker בהגדרות', 'error'); openSettings(); return;
+  }
+  if (!state.line1.trim() && !state.showLogo) {
+    toast('הוסף טקסט או לוגו', 'warn'); return;
+  }
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true; btn.textContent = '⏳ שולח...';
+  try {
+    const label = {
+      width: state.width,
+      height: state.height,
+      line1: state.line1.trim(),
+      line2: state.line2.trim(),
+      showLogo: state.showLogo,
+      showBorder: state.showBorder,
+      logoDataUrl: state.showLogo ? (state.customLogo || DEFAULT_LOGO_DATAURL) : null,
+    };
+    const r = await fetch(`${state.workerUrl}/jobs`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: state.pin, label })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    toast(`נשלח ✓ (בתור: ${data.queued})`);
+  } catch (e) {
+    toast('שליחה נכשלה: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '🖨️ שלח להדפסה';
+  }
+}
+
+// ============ SW ============
+function registerSW() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+}
+
+init();
+</script>
+</body>
+</html>

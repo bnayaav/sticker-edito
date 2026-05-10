@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>הדפסת מדבקות — ComPhone</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&family=Rubik:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c1014;
+    --bg-2: #141a21;
+    --bg-3: #1d242d;
+    --line: #2a323d;
+    --text: #e8edf3;
+    --text-dim: #8a95a3;
+    --accent: #2dd4bf;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --success: #22c55e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--text); font-family: 'Assistant', system-ui, sans-serif; min-height: 100vh; }
+
+  .screen { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+  .card {
+    background: var(--bg-2); border: 1px solid var(--line); border-radius: 20px;
+    padding: 32px; max-width: 520px; width: 100%;
+  }
+  h1 {
+    font-family: 'Rubik', sans-serif; font-weight: 900; margin: 0 0 8px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--accent); display: inline-block; box-shadow: 0 0 16px var(--accent); }
+  .dot.idle { background: var(--text-dim); box-shadow: none; }
+  .dot.error { background: var(--danger); }
+  .sub { color: var(--text-dim); margin: 0 0 24px; font-size: 14px; }
+
+  label { display: block; font-size: 12px; color: var(--text-dim); margin: 16px 0 6px; text-transform: uppercase; letter-spacing: 0.1em; }
+  input {
+    width: 100%; background: var(--bg-3); border: 1px solid var(--line);
+    border-radius: 12px; padding: 14px; color: var(--text);
+    font-size: 18px; font-family: 'Rubik', monospace;
+    text-align: center; letter-spacing: 0.2em;
+  }
+  input:focus { outline: none; border-color: var(--accent); }
+
+  button {
+    width: 100%; padding: 14px; border-radius: 12px;
+    border: 1px solid var(--accent); background: var(--accent);
+    color: #061419; font-size: 15px; font-weight: 700;
+    font-family: inherit; cursor: pointer; margin-top: 16px;
+  }
+  button.secondary {
+    background: transparent; color: var(--text); border-color: var(--line);
+  }
+
+  .status-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .status-text { font-weight: 600; }
+  .status-text.dim { color: var(--text-dim); }
+
+  .queue {
+    background: var(--bg-3); border-radius: 12px; padding: 16px;
+    margin-top: 16px; max-height: 280px; overflow-y: auto;
+  }
+  .queue-empty { color: var(--text-dim); font-size: 14px; text-align: center; padding: 12px; }
+  .job {
+    display: flex; align-items: center; gap: 12px; padding: 10px;
+    border-radius: 8px; background: var(--bg-2); margin-bottom: 6px;
+  }
+  .job-info { flex: 1; min-width: 0; }
+  .job-text { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .job-meta { font-size: 11px; color: var(--text-dim); font-family: 'Rubik', monospace; }
+  .job-status { font-size: 11px; color: var(--success); font-weight: 700; }
+  .job-status.printing { color: var(--warning); }
+
+  .pin-display {
+    text-align: center; font-family: 'Rubik', monospace;
+    font-size: 36px; font-weight: 900; letter-spacing: 0.3em;
+    color: var(--accent); margin: 24px 0; padding: 16px;
+    background: var(--bg-3); border-radius: 12px;
+  }
+
+  .footer-actions { display: flex; gap: 8px; margin-top: 16px; }
+  .footer-actions button { margin-top: 0; flex: 1; }
+
+  /* === אזור ההדפסה — מוסתר על המסך, נחשף בהדפסה === */
+  #printArea { display: none; }
+  @media print {
+    body * { visibility: hidden !important; }
+    #printArea, #printArea * { visibility: visible !important; }
+    #printArea {
+      display: block !important;
+      position: fixed !important; top: 0; right: 0; left: 0;
+      margin: 0 !important; padding: 0 !important;
+    }
+    .screen { display: none !important; }
+  }
+
+  .label-print {
+    background: white; color: black;
+    font-family: 'Rubik', sans-serif;
+    box-sizing: border-box;
+    overflow: hidden;
+    text-align: center;
+    line-height: 1;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .label-print.has-border { outline: 0.4mm solid black; outline-offset: -0.8mm; }
+  .label-text-1 { font-weight: 900; line-height: 1.05; }
+  .label-text-2 { font-weight: 500; opacity: 0.85; margin-top: 0.4em; }
+  .label-logo-img { display: block; margin-top: 0.4em; max-width: 80%; max-height: 30%; object-fit: contain; }
+</style>
+</head>
+<body>
+
+<div class="screen" id="screenSetup">
+  <div class="card">
+    <h1><span class="dot idle"></span> הדפסת מדבקות</h1>
+    <p class="sub">חבר את המחשב לאפליקציית הנייד באמצעות PIN וכתובת ה-Worker.</p>
+
+    <label>קוד צימוד (PIN)</label>
+    <input id="setupPin" maxlength="6" inputmode="numeric" placeholder="0000" />
+
+    <label>כתובת Worker</label>
+    <input id="setupUrl" placeholder="https://sticker-print-queue.YOUR.workers.dev" style="font-size: 14px; letter-spacing: 0; text-align: right; direction: ltr; font-family: monospace" />
+
+    <button onclick="connect()">התחבר</button>
+  </div>
+</div>
+
+<div class="screen" id="screenMain" style="display:none">
+  <div class="card">
+    <h1><span class="dot" id="statusDot"></span> מאזין להדפסות</h1>
+    <p class="sub" id="statusSub">מחובר וממתין למדבקות מהנייד...</p>
+
+    <div class="status-row">
+      <div style="flex:1">
+        <div class="status-text dim" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em">PIN פעיל</div>
+        <div style="font-family: 'Rubik', monospace; font-size: 22px; font-weight: 900; color: var(--accent); letter-spacing: 0.2em" id="activePin">----</div>
+      </div>
+      <div style="flex:1; text-align: end">
+        <div class="status-text dim" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em">סך הודפסו</div>
+        <div style="font-family: 'Rubik', monospace; font-size: 22px; font-weight: 900" id="printedCount">0</div>
+      </div>
+    </div>
+
+    <div class="queue" id="queue">
+      <div class="queue-empty">התור ריק — שלח מדבקה מהנייד</div>
+    </div>
+
+    <div class="footer-actions">
+      <button class="secondary" onclick="testPrint()">🖨️ הדפסת בדיקה</button>
+      <button class="secondary" onclick="disconnect()">ניתוק</button>
+    </div>
+
+    <div style="font-size: 11px; color: var(--text-dim); margin-top: 16px; line-height: 1.5; padding: 12px; background: var(--bg-3); border-radius: 8px">
+      💡 <b>חשוב:</b> בחלון ההדפסה ודא ש"גודל" = "ברירת מחדל" / "Default" וש"שוליים" = "ללא" / "None". שמור את ההגדרות בפעם הראשונה.
+    </div>
+  </div>
+</div>
+
+<!-- אזור ההדפסה -->
+<div id="printArea"></div>
+
+<script>
+let config = { pin: '', url: '' };
+let printedCount = 0;
+let polling = false;
+let pollTimer = null;
+let isPrinting = false;
+let knownJobIds = new Set();
+
+function loadConfig() {
+  try { config = JSON.parse(localStorage.getItem('printer-config') || '{}'); } catch {}
+  printedCount = +(localStorage.getItem('printer-count') || 0);
+}
+
+function saveConfig() {
+  localStorage.setItem('printer-config', JSON.stringify(config));
+}
+
+function connect() {
+  const pin = document.getElementById('setupPin').value.trim();
+  const url = document.getElementById('setupUrl').value.trim().replace(/\/$/, '');
+  if (!/^\d{4,6}$/.test(pin)) { alert('PIN חייב להיות 4-6 ספרות'); return; }
+  if (!/^https?:\/\//.test(url)) { alert('כתובת Worker לא תקינה'); return; }
+  config = { pin, url };
+  saveConfig();
+  startMain();
+}
+
+function disconnect() {
+  if (!confirm('להתנתק מה-PIN ולחזור למסך ההגדרה?')) return;
+  config = { pin: '', url: '' };
+  saveConfig();
+  stopPolling();
+  document.getElementById('screenMain').style.display = 'none';
+  document.getElementById('screenSetup').style.display = 'flex';
+}
+
+function startMain() {
+  document.getElementById('screenSetup').style.display = 'none';
+  document.getElementById('screenMain').style.display = 'flex';
+  document.getElementById('activePin').textContent = config.pin;
+  document.getElementById('printedCount').textContent = printedCount;
+  startPolling();
+}
+
+function setStatus(state, text) {
+  const dot = document.getElementById('statusDot');
+  const sub = document.getElementById('statusSub');
+  dot.className = 'dot ' + (state === 'idle' ? 'idle' : state === 'error' ? 'error' : '');
+  sub.textContent = text;
+}
+
+function startPolling() {
+  polling = true;
+  setStatus('ok', 'מחובר וממתין למדבקות מהנייד...');
+  poll();
+  pollTimer = setInterval(poll, 3000);
+}
+
+function stopPolling() {
+  polling = false;
+  if (pollTimer) clearInterval(pollTimer);
+}
+
+async function poll() {
+  if (!polling || isPrinting) return;
+  try {
+    const r = await fetch(`${config.url}/jobs?pin=${config.pin}`);
+    if (!r.ok) throw new Error('שגיאת שרת');
+    const data = await r.json();
+    const jobs = data.jobs || [];
+    renderQueue(jobs);
+    // חפש משימה חדשה
+    const next = jobs.find(j => !knownJobIds.has(j.id));
+    if (next && !isPrinting) {
+      knownJobIds.add(next.id);
+      await processJob(next);
+    }
+  } catch (e) {
+    setStatus('error', 'שגיאה: ' + e.message);
+  }
+}
+
+function renderQueue(jobs) {
+  const c = document.getElementById('queue');
+  if (!jobs.length) {
+    c.innerHTML = '<div class="queue-empty">התור ריק — שלח מדבקה מהנייד</div>';
+    return;
+  }
+  c.innerHTML = jobs.map(j => `
+    <div class="job">
+      <div class="job-info">
+        <div class="job-text">${esc(j.label.line1) || '(לוגו)'}</div>
+        <div class="job-meta">${j.label.width}×${j.label.height} מ"מ · ${timeAgo(j.createdAt)}</div>
+      </div>
+      <div class="job-status ${isPrinting ? 'printing' : ''}">${isPrinting ? 'מדפיס...' : 'בתור'}</div>
+    </div>
+  `).join('');
+}
+
+function esc(s) {
+  return (s || '').replace(/[<>&"']/g, c => ({ '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+function timeAgo(t) {
+  const s = Math.floor((Date.now() - t) / 1000);
+  if (s < 60) return `לפני ${s} שניות`;
+  if (s < 3600) return `לפני ${Math.floor(s/60)} דק'`;
+  return `לפני ${Math.floor(s/3600)} שעות`;
+}
+
+async function processJob(job) {
+  isPrinting = true;
+  setStatus('ok', `מדפיס: ${job.label.line1 || 'לוגו'}...`);
+  try {
+    await printLabel(job.label);
+    // מחק מהתור
+    await fetch(`${config.url}/jobs/${job.id}?pin=${config.pin}`, { method: 'DELETE' });
+    printedCount++;
+    localStorage.setItem('printer-count', printedCount);
+    document.getElementById('printedCount').textContent = printedCount;
+    setStatus('ok', 'מחובר וממתין למדבקות מהנייד...');
+  } catch (e) {
+    setStatus('error', 'הדפסה נכשלה: ' + e.message);
+  } finally {
+    isPrinting = false;
+    poll();
+  }
+}
+
+function printLabel(label) {
+  return new Promise(resolve => {
+    const w = label.width, h = label.height;
+    // הזרק stylesheet ל-@page בגודל המדויק
+    const styleId = 'print-page-style';
+    let oldStyle = document.getElementById(styleId);
+    if (oldStyle) oldStyle.remove();
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.textContent = `
+      @page {
+        size: ${w}mm ${h}mm;
+        margin: 0;
+      }
+      @media print {
+        html, body { width: ${w}mm; height: ${h}mm; margin: 0 !important; padding: 0 !important; }
+        #printArea { width: ${w}mm; height: ${h}mm; }
+      }
+    `;
+    document.head.appendChild(style);
+
+    // בנה את התווית
+    const padding = Math.min(w, h) * 0.08;
+    const hasL1 = !!label.line1;
+    const hasL2 = !!label.line2;
+    const hasLogo = label.showLogo && label.logoDataUrl;
+    let textArea = h - padding * 2;
+    if (hasLogo) textArea *= 0.55;
+    if (hasL2) textArea *= 0.62;
+    const fontSize = Math.max(2, textArea * 0.7);
+
+    const area = document.getElementById('printArea');
+    area.innerHTML = `
+      <div class="label-print ${label.showBorder ? 'has-border' : ''}" style="
+        width: ${w}mm; height: ${h}mm;
+        padding: ${padding}mm;
+      ">
+        ${hasL1 ? `<div class="label-text-1" style="font-size: ${fontSize}mm">${esc(label.line1)}</div>` : ''}
+        ${hasL2 ? `<div class="label-text-2" style="font-size: ${fontSize * 0.55}mm">${esc(label.line2)}</div>` : ''}
+        ${hasLogo ? `<img class="label-logo-img" src="${label.logoDataUrl}" />` : ''}
+      </div>
+    `;
+
+    // המתן לטעינת הלוגו אם יש
+    const img = area.querySelector('img');
+    const startPrint = () => {
+      // אחרי שההדפסה נסגרת — resolve
+      const onAfter = () => {
+        window.removeEventListener('afterprint', onAfter);
+        setTimeout(resolve, 300);
+      };
+      window.addEventListener('afterprint', onAfter);
+      // נחכה שניה כדי לוודא שהפונטים נטענו
+      setTimeout(() => window.print(), 200);
+      // fallback אם afterprint לא נורה
+      setTimeout(() => { window.removeEventListener('afterprint', onAfter); resolve(); }, 30000);
+    };
+    if (img && !img.complete) {
+      img.onload = startPrint;
+      img.onerror = startPrint;
+    } else {
+      startPrint();
+    }
+  });
+}
+
+function testPrint() {
+  printLabel({
+    width: 50, height: 30,
+    line1: 'בדיקת הדפסה', line2: '50×30 מ"מ',
+    showLogo: false, showBorder: true,
+  });
+}
+
+// ============ INIT ============
+loadConfig();
+if (config.pin && config.url) {
+  startMain();
+} else {
+  document.getElementById('screenSetup').style.display = 'flex';
+}
+</script>
+</body>
+</html>

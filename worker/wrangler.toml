@@ -1,0 +1,9 @@
+name = "sticker-print-queue"
+main = "src/index.js"
+compatibility_date = "2024-12-01"
+
+# החלף את ה-id של ה-KV אחרי שתיצור namespace חדש:
+# wrangler kv:namespace create LABELS
+[[kv_namespaces]]
+binding = "LABELS"
+id = "REPLACE_WITH_YOUR_KV_ID"
