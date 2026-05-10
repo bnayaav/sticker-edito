@@ -297,9 +297,21 @@ async function processJob(job) {
   }
 }
 
+function fitFontMm(text, maxWmm, maxHmm, charRatio) {
+  if (!text) return 0;
+  const byW = maxWmm / Math.max(text.length * charRatio, 1);
+  const byH = maxHmm * 0.9;
+  return Math.min(byW, byH);
+}
+
 function printLabel(label) {
   return new Promise(resolve => {
     const w = label.width, h = label.height;
+    const rotate = !!label.rotate;
+    // אם מסובב — דף הנייר מוחלף מימדים, התוכן יסובב 90° במרכז
+    const pageW = rotate ? h : w;
+    const pageH = rotate ? w : h;
+
     // הזרק stylesheet ל-@page בגודל המדויק
     const styleId = 'print-page-style';
     let oldStyle = document.getElementById(styleId);
@@ -308,50 +320,74 @@ function printLabel(label) {
     style.id = styleId;
     style.textContent = `
       @page {
-        size: ${w}mm ${h}mm;
+        size: ${pageW}mm ${pageH}mm;
         margin: 0;
       }
       @media print {
-        html, body { width: ${w}mm; height: ${h}mm; margin: 0 !important; padding: 0 !important; }
-        #printArea { width: ${w}mm; height: ${h}mm; }
+        html, body { width: ${pageW}mm; height: ${pageH}mm; margin: 0 !important; padding: 0 !important; }
+        #printArea { width: ${pageW}mm; height: ${pageH}mm; }
       }
     `;
     document.head.appendChild(style);
 
-    // בנה את התווית
+    // חישוב פריסה (תמיד ביחס לתווית הלוגית W×H)
     const padding = Math.min(w, h) * 0.08;
+    const usableW = w - padding * 2;
+    let availH = h - padding * 2;
+
     const hasL1 = !!label.line1;
     const hasL2 = !!label.line2;
     const hasLogo = label.showLogo && label.logoDataUrl;
-    let textArea = h - padding * 2;
-    if (hasLogo) textArea *= 0.55;
-    if (hasL2) textArea *= 0.62;
-    const fontSize = Math.max(2, textArea * 0.7);
 
-    const area = document.getElementById('printArea');
-    area.innerHTML = `
+    let logoH = 0;
+    if (hasLogo && (hasL1 || hasL2)) { logoH = availH * 0.35; availH -= logoH + padding * 0.5; }
+    else if (hasLogo) { logoH = availH; availH = 0; }
+
+    let h1 = availH, h2Box = 0;
+    if (hasL1 && hasL2) { h1 = availH * 0.6; h2Box = availH * 0.4; }
+    else if (!hasL1) h1 = 0;
+
+    const f1 = fitFontMm(label.line1, usableW, h1, 0.6);
+    const f2 = fitFontMm(label.line2, usableW, h2Box, 0.55);
+
+    const labelHtml = `
       <div class="label-print ${label.showBorder ? 'has-border' : ''}" style="
         width: ${w}mm; height: ${h}mm;
         padding: ${padding}mm;
       ">
-        ${hasL1 ? `<div class="label-text-1" style="font-size: ${fontSize}mm">${esc(label.line1)}</div>` : ''}
-        ${hasL2 ? `<div class="label-text-2" style="font-size: ${fontSize * 0.55}mm">${esc(label.line2)}</div>` : ''}
-        ${hasLogo ? `<img class="label-logo-img" src="${label.logoDataUrl}" />` : ''}
+        ${hasL1 ? `<div class="label-text-1" style="font-size: ${f1}mm">${esc(label.line1)}</div>` : ''}
+        ${hasL2 ? `<div class="label-text-2" style="font-size: ${f2}mm">${esc(label.line2)}</div>` : ''}
+        ${hasLogo ? `<img class="label-logo-img" src="${label.logoDataUrl}" style="max-height: ${logoH}mm" />` : ''}
       </div>
     `;
+
+    const area = document.getElementById('printArea');
+    if (rotate) {
+      // עוטף בקונטיינר בגודל הדף, ממקם את התווית במרכז ומסובב 90°
+      area.innerHTML = `
+        <div style="position: relative; width: ${pageW}mm; height: ${pageH}mm; overflow: hidden;">
+          <div style="
+            position: absolute;
+            top: 50%; left: 50%;
+            width: ${w}mm; height: ${h}mm;
+            transform: translate(-50%, -50%) rotate(90deg);
+            transform-origin: center center;
+          ">${labelHtml}</div>
+        </div>
+      `;
+    } else {
+      area.innerHTML = labelHtml;
+    }
 
     // המתן לטעינת הלוגו אם יש
     const img = area.querySelector('img');
     const startPrint = () => {
-      // אחרי שההדפסה נסגרת — resolve
       const onAfter = () => {
         window.removeEventListener('afterprint', onAfter);
         setTimeout(resolve, 300);
       };
       window.addEventListener('afterprint', onAfter);
-      // נחכה שניה כדי לוודא שהפונטים נטענו
       setTimeout(() => window.print(), 200);
-      // fallback אם afterprint לא נורה
       setTimeout(() => { window.removeEventListener('afterprint', onAfter); resolve(); }, 30000);
     };
     if (img && !img.complete) {
@@ -365,9 +401,9 @@ function printLabel(label) {
 
 function testPrint() {
   printLabel({
-    width: 50, height: 30,
-    line1: 'בדיקת הדפסה', line2: '50×30 מ"מ',
-    showLogo: false, showBorder: true,
+    width: 50, height: 25,
+    line1: 'בדיקה', line2: '50×25 מ"מ',
+    showLogo: false, showBorder: true, rotate: false,
   });
 }
 
